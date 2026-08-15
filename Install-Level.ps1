@@ -1,1 +1,8 @@
-$args = "LEVEL_API_KEY=eQuNHfbygzNkYNKze6SX2chM"; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) "level.msi"; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri "https://downloads.level.io/level.msi" -OutFile $tempFile; $ProgressPreference = 'Continue'; Start-Process msiexec.exe -Wait -ArgumentList "/i `"$tempFile`" $args /qn";
+$args = "LEVEL_API_KEY=eQuNHfbygzNkYNKze6SX2chM"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$tempFile = Join-Path ([System.IO.Path]::GetTempPath()) "level.msi"
+$ProgressPreference = 'SilentlyContinue'
+Invoke-WebRequest -Uri "https://downloads.level.io/level.msi" -OutFile $tempFile
+$ProgressPreference = 'Continue'
+Start-Process msiexec.exe -WindowStyle Hidden -Wait -ArgumentList '/i', $tempFile, $args, '/qn', '/quiet', '/norestart'
+Remove-Item $tempFile -Force
